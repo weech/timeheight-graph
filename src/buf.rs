@@ -1,3 +1,4 @@
+use ndarray::{Array, Array2};
 use nom::bytes::complete::{tag, take};
 use nom::character::complete::{alpha1, alphanumeric0, digit1, line_ending, multispace1};
 use nom::combinator::map;
@@ -6,12 +7,11 @@ use nom::multi::{count, many1, separated_list};
 use nom::number::complete::double;
 use nom::sequence::{separated_pair, terminated, tuple};
 use nom::IResult;
-use ndarray::{Array2, Array};
 use std::collections::HashMap;
 use thiserror::Error;
 use time::OffsetDateTime;
 
-#[derive(Debug, Error, PartialEq)]
+#[derive(Debug, Error, PartialEq, Eq)]
 pub enum BufError<I: std::fmt::Debug> {
     #[error("Unknown parsing error")]
     Unknown(String),
@@ -34,6 +34,7 @@ fn key_time_curr(time: &str) -> OffsetDateTime {
 }
 
 #[derive(Debug)]
+#[allow(dead_code)]
 pub struct StationInfo {
     stid: String,
     stnm: u64,
@@ -43,12 +44,14 @@ pub struct StationInfo {
 }
 
 #[derive(Debug)]
+#[allow(dead_code)]
 pub struct TimeInfo {
     time: OffsetDateTime,
     stim: u64,
 }
 
 #[derive(Debug)]
+#[allow(dead_code)]
 pub struct BufFile {
     stninfo: StationInfo,
     times: Vec<TimeInfo>,
@@ -57,24 +60,25 @@ pub struct BufFile {
     surface: HashMap<String, Vec<Option<f64>>>,
 }
 
-
-
 impl BufFile {
-
     /// Return an owned array of time (rows) vs height (columns)
     pub fn timevsheight(&self) -> HashMap<String, Array2<f64>> {
         // Flatten and collect
         let mut data = HashMap::new();
         for (key, value) in self.columns.iter() {
-            let oned: Vec<_> = value.iter().flatten().map(|x| *x).collect();
+            let oned: Vec<_> = value.iter().flatten().copied().collect();
             let shape = (value.len(), value[0].len());
-            data.insert(key.to_owned(), Array::from_shape_vec(shape, oned).expect("Messages have different number of levels"));
+            data.insert(
+                key.to_owned(),
+                Array::from_shape_vec(shape, oned)
+                    .expect("Messages have different number of levels"),
+            );
         }
         data
     }
 
     pub fn timestamps(&self) -> Vec<i64> {
-        self.times.iter().map(|x| x.time.timestamp()).collect()
+        self.times.iter().map(|x| x.time.unix_timestamp()).collect()
     }
 
     pub fn model_hour(&self) -> u8 {
@@ -282,7 +286,7 @@ fn space(i: &str) -> IResult<&str, &str> {
 }
 
 fn timeparse(i: &str) -> IResult<&str, OffsetDateTime> {
-    map(take(11usize), |time| key_time_curr(time))(i)
+    map(take(11usize), key_time_curr)(i)
 }
 
 fn key_time(i: &str) -> IResult<&str, OffsetDateTime> {
