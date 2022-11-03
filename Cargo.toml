@@ -8,7 +8,7 @@ edition = "2018"
 
 [dependencies]
 ndarray = { version = "0.13.1", features = ["rayon"]}
-reqwest = { version = "0.10.6", features = ["blocking"]}
+reqwest = { version = "0.11", features = ["blocking"]}
 clap = "2.33.1"
 time = "0.2.16"
 nom = "5.1.2"
